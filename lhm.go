@@ -26,11 +26,11 @@ import (
 // LogHandleMap is a concurrent map that is used to look up
 // filehandles of active logfiles
 type LogHandleMap struct {
-	hmap map[string]*reopen.FileWriter
-	lmap map[string]*logrus.Logger
+	hmap       map[string]*reopen.FileWriter
+	lmap       map[string]*logrus.Logger
+	bp         string
+	signal     chan os.Signal
 	sync.RWMutex
-	bp     string
-	signal chan os.Signal
 }
 
 // New returns an initialized LogHandleMap
