@@ -112,16 +112,16 @@ func (x *LogHandleMap) getLoggerNolock(key string) *logrus.Logger {
 	return x.lmap[key]
 }
 
-// rLock locks l and returns the embedded map. Unlocking must
-// be done by the caller via RangeUnlock()
-func (x *LogHandleMap) rLock() map[string]*reopen.FileWriter {
+// rangeLock locks l and returns the embedded map. Unlocking must
+// be done by the caller via rangeUnlock()
+func (x *LogHandleMap) rangeLock() map[string]*reopen.FileWriter {
 	x.Lock()
 	return x.hmap
 }
 
-// rUnlock unlocks l. It is required to be called after Range() once
+// rangeUnlock unlocks l. It is required to be called after rangeLock() once
 // the caller is finished with the map.
-func (x *LogHandleMap) rUnlock() {
+func (x *LogHandleMap) rangeUnlock() {
 	x.Unlock()
 }
 
@@ -138,7 +138,7 @@ func (x *LogHandleMap) Reopen(ignorePrefix string, abortFunc func(e error)) {
 		case <-x.signal:
 			locked := true
 		fileloop:
-			for name, lfHandle := range x.rLock() {
+			for name, lfHandle := range x.rangeLock() {
 				if strings.HasPrefix(name, ignorePrefix) {
 					continue
 				}
@@ -147,7 +147,7 @@ func (x *LogHandleMap) Reopen(ignorePrefix string, abortFunc func(e error)) {
 				err := lfHandle.Reopen()
 
 				if err != nil {
-					x.rUnlock()
+					x.rangeUnlock()
 					locked = false
 					abortFunc(err)
 
@@ -168,7 +168,7 @@ func (x *LogHandleMap) Reopen(ignorePrefix string, abortFunc func(e error)) {
 				lg.SetLevel(lvl)
 			}
 			if locked {
-				x.rUnlock()
+				x.rangeUnlock()
 			}
 		}
 	}
