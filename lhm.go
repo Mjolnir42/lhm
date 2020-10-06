@@ -30,12 +30,14 @@ type LogHandleMap struct {
 	lmap       map[string]*logrus.Logger
 	bp         string
 	signal     chan os.Signal
+	configured bool
 	sync.RWMutex
 }
 
 // New returns an initialized LogHandleMap
 func New(basepath string) (*LogHandleMap, *chan os.Signal) {
 	lm := &LogHandleMap{}
+
 	lm.hmap = make(map[string]*reopen.FileWriter)
 	lm.lmap = make(map[string]*logrus.Logger)
 	lm.bp = basepath
@@ -43,7 +45,49 @@ func New(basepath string) (*LogHandleMap, *chan os.Signal) {
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGUSR2)
 	lm.signal = sc
+	lm.configured = true
 	return lm, &sc
+}
+
+// Init returns are barebone LogHandleMap
+func Init() *LogHandleMap {
+	lm := &LogHandleMap{}
+
+	lm.hmap = make(map[string]*reopen.FileWriter)
+	lm.lmap = make(map[string]*logrus.Logger)
+
+	nl := logrus.New()
+	nl.Out = reopen.Stderr
+	nl.ExitFunc = func(code int) {}
+	nl.Formatter = &logrus.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	}
+	nl.Infoln(fmt.Sprintf("Started early logging at %s",
+		time.Now().UTC().Format(time.RFC3339),
+	))
+	nl.SetLevel(logrus.DebugLevel)
+	lm.lmap[`__early`] = nl
+	return lm
+}
+
+// Setup upgrades a LogHandleMap created via Init() into a full map.
+func (x *LogHandleMap) Setup(basepath string) *chan os.Signal {
+	x.Lock()
+	defer x.Unlock()
+
+	if x.configured {
+		return &x.signal
+	}
+	x.lmap[`__early`].Exit(0)
+	delete(x.lmap, `__early`)
+
+	x.bp = basepath
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGUSR2)
+	x.signal = sc
+	x.configured = true
+	return &sc
 }
 
 // Add registers a new filehandle
