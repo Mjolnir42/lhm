@@ -90,6 +90,30 @@ func (x *LogHandleMap) Setup(basepath string) *chan os.Signal {
 	return &sc
 }
 
+// EarlyPrintf exposes logrus.Printf on the __early logger created via
+// Init().
+func (x *LogHandleMap) EarlyPrintf(format string, args ...interface{}) {
+	if x.configured {
+		return
+	}
+
+	x.RLock()
+	defer x.RUnlock()
+	x.lmap[`__early`].Printf(format, args...)
+}
+
+// EarlyFatal exposes logrus.Fatal on the __early logger created via
+// Init().
+func (x *LogHandleMap) EarlyFatal(args ...interface{}) {
+	if x.configured {
+		return
+	}
+
+	x.RLock()
+	defer x.RUnlock()
+	x.lmap[`__early`].Fatal(args...)
+}
+
 // Add registers a new filehandle
 func (x *LogHandleMap) Add(key string, fh *reopen.FileWriter, lg *logrus.Logger) {
 	x.Lock()
