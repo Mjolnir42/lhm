@@ -58,7 +58,6 @@ func Init() *LogHandleMap {
 
 	nl := logrus.New()
 	nl.Out = reopen.Stderr
-	nl.ExitFunc = func(code int) {}
 	nl.Formatter = &logrus.TextFormatter{
 		DisableColors: true,
 		FullTimestamp: true,
@@ -79,7 +78,6 @@ func (x *LogHandleMap) Setup(basepath string) *chan os.Signal {
 	if x.configured {
 		return &x.signal
 	}
-	x.lmap[`__early`].Exit(0)
 	delete(x.lmap, `__early`)
 
 	x.bp = basepath
